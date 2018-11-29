@@ -5,11 +5,12 @@
     "start": "meteor run",
     "lint": "eslint .",
     "pretest": "npm run lint --silent",
-    "mocha": "export MONGO_URL=mongodb://mongo:27017/alice;export MOCHA_GREP=basic-doi-test;TEST_WATCH=1 meteor test --full-app --driver-package meteortesting:mocha --port 3000 --settings settings-jenkins-regtest.json",
+    "mocha": "MONGO_URL=mongodb://mongo:27017/alice MOCHA_GREP=basic-doi-test TEST_WATCH=1 meteor test --full-app --driver-package meteortesting:mocha --port 3000 --settings settings-jenkins-regtest.json",
+    "selenium": "MOCHA_GREP=meteor-1.8.1-selenium-mocha TEST_WATCH=1 TEST_BROWSER_VISIBLE=1 TEST_BROWSER_DRIVER=chrome meteor test --once --full-app --driver-package meteortesting:mocha --port 3000 --settings settings-jenkins-regtest.json",
     "test-mocha": "export MONGO_URL=mongodb://mongo:27017/alice; export MOCHA_GREP=basic-doi-test; meteor test --once --full-app --driver-package meteortesting:mocha --port 3000 --settings settings-jenkins-regtest.json",
     "test-nico": "export MONGO_URL=mongodb://mongo:27017/alice; export MOCHA_GREP=basic-doi-test-nico; meteor test --once --full-app --driver-package meteortesting:mocha --port 3000 --settings settings-jenkins-regtest.json",
-    "test-chrome": "MOCHA_TIMEOUT=1000 MONGO_URL=mongodb://mongo:27017/alice MOCHA_GREP=webfrontend TEST_WATCH=1 meteor test --once --full-app --driver-package meteortesting:mocha --port 3100 --settings settings-jenkins-regtest.json",
-    "test-app-chrome": "MOCHA_TIMEOUT=1000 TEST_BROWSER_VISIBLE=1 MONGO_URL=mongodb://mongo:27017/alice MOCHA_GREP=webfrontend TEST_WATCH=1 meteor test --full-app --once --driver-package meteortesting:mocha --port 3100 --settings settings-jenkins-regtest.json",
+    "test-chrome": "MOCHA_TIMEOUT=20000 TEST_BROWSER_VISIBLE=1 MONGO_URL=mongodb://mongo:27017/alice MOCHA_GREP=webfrontend TEST_WATCH=1 meteor test --once --full-app --driver-package meteortesting:mocha --port 3100 --settings settings-jenkins-regtest.json",
+    "test-app-chrome": "MOCHA_TIMEOUT=20000 TEST_BROWSER_VISIBLE=1 MONGO_URL=mongodb://mongo:27017/alice MOCHA_GREP=webfrontend TEST_WATCH=1 meteor test --full-app --once --driver-package meteortesting:mocha --port 3100 --settings settings-jenkins-regtest.json",
     "test-phantom": "TEST_BROWSER_DRIVER=phantomjs meteor test --once --driver-package meteortesting:mocha",
     "test-app-phantom": "TEST_BROWSER_DRIVER=phantomjs meteor test --full-app --once --driver-package meteortesting:mocha",
     "test-watch": "TEST_BROWSER_DRIVER=chrome TEST_WATCH=1 meteor test --driver-package meteortesting:mocha",
@@ -78,8 +79,7 @@
     "eslint-plugin-react": "^7.10.0",
     "execa": "^1.0.0",
     "poplib": "^0.1.7",
-    "rtd": "^1.0.0",
-    "chromedriver": "2.35.0",
-    "selenium-webdriver": "3.6.0"
+    "chromedriver": "^2.35.0",
+    "selenium-webdriver": "^3.6.0"
   }
 }

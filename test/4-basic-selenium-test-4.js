@@ -1,3 +1,26 @@
+import assert from "assert";
+var webdriver = require('selenium-webdriver');
+
+var By = require('selenium-webdriver').By,
+    until = require('selenium-webdriver').until,
+    firefox = require('selenium-webdriver/firefox');
+
+const mochaTimeOut = 30000;
+
+describe("Doichain dApp webfrontend", function() {
+    this.timeout(mochaTimeOut);
+
+    it('should append query to title', async function() {
+        var driver = new webdriver.Builder().withCapabilities(webdriver.Capabilities.chrome()).build();
+        await driver.get('http://www.google.com/ncr');
+        await driver.findElement(By.name('q')).sendKeys('webdriver');
+        await driver.findElement(By.name('q')).sendKeys(webdriver.Key.ENTER);
+        await driver.wait(until.titleIs('webdriver - Google Search'), 3000);
+        await driver.quit()
+    });
+
+});
+
 /*var assert = require('assert');
 var selenium = require('selenium-webdriver');
 
@@ -47,7 +70,7 @@ describe('Doichain dApp webfrontend', function() {
         driver.quit();
     });
 }); */
-
+/*
 const { Builder, By, Key, until } = require('selenium-webdriver');
 const { expect } = require('chai');
 
@@ -66,7 +89,7 @@ describe('Doichain dApp webfrontend', () => {
     });
 
     after(async () => driver.quit());
-});
+}); */
 /*
 var driver,webdriver = require("selenium-webdriver");
 var chrome = require("selenium-webdriver/chrome")
