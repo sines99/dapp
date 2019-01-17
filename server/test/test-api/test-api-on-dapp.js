@@ -6,6 +6,7 @@ import {Recipients} from "../../../imports/api/recipients/recipients";
 import {getHttpGET, getHttpGETdata, getHttpPOST} from "../../../server/api/http";
 import {testLogging} from "../../../imports/startup/server/log-configuration";
 import {generatetoaddress} from "./test-api-on-node";
+import { URL } from "url";
 
 const headers = { 'Content-Type':'text/plain'  };
 const os = require('os');
@@ -33,6 +34,10 @@ export function login(url, paramsLogin, log) {
 }
 
 export function requestDOI(url, auth, recipient_mail, sender_mail, data,  log) {
+    const syncFunc = Meteor.wrapAsync(request_DOI);
+    return syncFunc(url, auth, recipient_mail, sender_mail, data,  log);
+}
+export function request_DOI(url, auth, recipient_mail, sender_mail, data,  log, callback) {
     if(log) testLogging('step 1 - requestDOI called via REST');
 
     const urlOptIn = url+'/api/v1/opt-in';
@@ -56,7 +61,7 @@ export function requestDOI(url, auth, recipient_mail, sender_mail, data,  log) {
         'X-User-Id':auth.userId,
         'X-Auth-Token':auth.authToken
     };
-
+    try{
     const realDataOptIn = { data: dataOptIn, headers: headersOptIn};
     const resultOptIn = getHttpPOST(urlOptIn, realDataOptIn);
 
@@ -74,7 +79,11 @@ export function requestDOI(url, auth, recipient_mail, sender_mail, data,  log) {
         testLogging('adding DOI');
     chai.assert.equal('success',  resultOptIn.data.status);
     }
-    return resultOptIn.data;
+    callback(null,resultOptIn.data);
+    }
+    catch(e){
+        callback(e,null);
+    }
 }
 
 export function getNameIdOfRawTransaction(url, auth, txId) {
@@ -166,12 +175,12 @@ async function get_nameid_of_optin_from_rawtx(url, auth, optInId, log, callback)
     }
 }
 
-export function fetchConfirmLinkFromPop3Mail(hostname,port,username,password,alicedapp_url,log) {
+export function fetchConfirmLinkFromPop3Mail(hostname,port,username,password,alicedapp_url,log,mail_test_string="") {
     const syncFunc = Meteor.wrapAsync(fetch_confirm_link_from_pop3_mail);
-    return syncFunc(hostname,port,username,password,alicedapp_url,log);
+    return syncFunc(hostname,port,username,password,alicedapp_url,log,mail_test_string);
 }
 
-function fetch_confirm_link_from_pop3_mail(hostname,port,username,password,alicedapp_url,log,callback) {
+function fetch_confirm_link_from_pop3_mail(hostname,port,username,password,alicedapp_url,log,mail_test_string,callback) {
 
     testLogging("step 3 - getting email from bobs inbox");
     //https://github.com/ditesh/node-poplib/blob/master/demos/retrieve-all.js
@@ -212,11 +221,13 @@ function fetch_confirm_link_from_pop3_mail(hostname,port,username,password,alice
                                     if(os.hostname()!=='regtest'){ //this is probably a selenium test from outside docker  - so replace URL so it can be confirmed
                                             html = replaceAll(html,'http://172.20.0.8','http://localhost');  //TODO put this IP inside a config
                                     }
-                                    chai.expect(html.indexOf(alicedapp_url)).to.not.equal(-1);
-                                    const linkdata =  html.substring(html.indexOf(alicedapp_url),html.indexOf("'",html.indexOf(alicedapp_url)));
+                                    let linkdata = null;
+                                    chai.expect(html.indexOf(alicedapp_url),"dappUrl not found in email").to.not.equal(-1);
+                                    linkdata =  html.substring(html.indexOf(alicedapp_url),html.indexOf("'",html.indexOf(alicedapp_url)));
 
-                                    chai.expect(linkdata).to.not.be.null;
-                                    if(log && !(log===true))chai.expect(html.indexOf(log)).to.not.equal(-1);
+                                    chai.expect(linkdata,"no linkdata found").to.not.be.null;
+                                    
+                                    if(mail_test_string)chai.expect(html.indexOf(mail_test_string),'teststring: "'+mail_test_string+'" not found').to.not.equal(-1);
                                     const requestData = {"linkdata":linkdata,"html":html}
 
                                     client.dele(msgnumber);
@@ -343,9 +354,12 @@ export function confirmLink(confirmLink) {
     return syncFunc(confirmLink);
 }
 
-function confirm_link(confirmLink,callback){
-    testLogging("clickable link:",confirmLink);
-    const doiConfirmlinkResult = getHttpGET(confirmLink,'');
+function confirm_link(confirmlink,callback){
+    testLogging("clickable link:",confirmlink);
+    const doiConfirmlinkRedir = HTTP.get(confirmlink,{followRedirects:false});
+    const redirLocation = doiConfirmlinkRedir.headers.location;
+    const doiConfirmlinkResult = HTTP.get(redirLocation);
+    testLogging("Response location:",redirLocation);
     try{
     if(doiConfirmlinkResult.content.indexOf("Hello world!")==-1){
     //    chai.expect(doiConfirmlinkResult.content.indexOf("ANMELDUNG ERFOLGREICH")).to.not.equal(-1);
@@ -357,7 +371,7 @@ function confirm_link(confirmLink,callback){
         chai.expect(doiConfirmlinkResult.content.indexOf("Hello world!")).to.not.equal(-1);
     }
     chai.assert.equal(200, doiConfirmlinkResult.statusCode);
-    callback(null,true);
+    callback(null,{location: redirLocation});
     }
     catch(e){
         callback(e,null);
@@ -483,14 +497,14 @@ export function exportOptIns(url,auth,log){
 }
 
 
-export function requestConfirmVerifyBasicDoi(node_url_alice,rpcAuthAlice, dappUrlAlice,dataLoginAlice,dappUrlBob,recipient_mail,sender_mail,optionalData,recipient_pop3username, recipient_pop3password, log) {
+export function requestConfirmVerifyBasicDoi(node_url_alice,rpcAuthAlice, dappUrlAlice,dataLoginAlice,dappUrlBob,recipient_mail,sender_mail,optionalData,recipient_pop3username, recipient_pop3password, log,mail_test_string="") {
     const syncFunc = Meteor.wrapAsync(request_confirm_verify_basic_doi);
-    return syncFunc(node_url_alice,rpcAuthAlice, dappUrlAlice,dataLoginAlice,dappUrlBob, recipient_mail,sender_mail,optionalData,recipient_pop3username, recipient_pop3password, log);
+    return syncFunc(node_url_alice,rpcAuthAlice, dappUrlAlice,dataLoginAlice,dappUrlBob, recipient_mail,sender_mail,optionalData,recipient_pop3username, recipient_pop3password, log,mail_test_string);
 }
 
 
 async function request_confirm_verify_basic_doi(node_url_alice,rpcAuthAlice, dappUrlAlice,dataLoginAlice,
-                                                dappUrlBob, recipient_mail,sender_mail_in,optionalData,recipient_pop3username, recipient_pop3password, log, callback) {
+                                                dappUrlBob, recipient_mail,sender_mail_in,optionalData,recipient_pop3username, recipient_pop3password, log,mail_test_string, callback) {
     if(log) testLogging('node_url_alice',node_url_alice);
     if(log) testLogging('rpcAuthAlice',rpcAuthAlice);
     if(log) testLogging('dappUrlAlice',dappUrlAlice);
@@ -519,18 +533,20 @@ async function request_confirm_verify_basic_doi(node_url_alice,rpcAuthAlice, dap
     let running = true;
     let counter = 0;
     let confirmedLink = "";
+    let lastError = null;
     confirmedLink = await(async function loop() {
         while(running && ++counter<50){ //trying 50x to get email from bobs mailbox
             try{
                 testLogging('step 3: getting email from hostname!',os.hostname());
-                const link2Confirm = fetchConfirmLinkFromPop3Mail((os.hostname()=='regtest')?'mail':'localhost', 110, recipient_pop3username, recipient_pop3password, dappUrlBob, false);
-                testLogging('step 4: confirming link',link2Confirm);
+                const link2Confirm = fetchConfirmLinkFromPop3Mail((os.hostname()=='regtest')?'mail':'localhost', 110, recipient_pop3username, recipient_pop3password, dappUrlBob, false,mail_test_string);
                 if(link2Confirm!=null){running=false;            
                 confirmedLink=link2Confirm;
                 testLogging('confirmed')
                 return link2Confirm;
                 }
             }catch(ex){
+                lastError=ex;
+                testLogging('trying to get email - so far no success:',ex);
                 testLogging('trying to get email - so far no success:',counter);
                 await new Promise(resolve => setTimeout(resolve, 3000));
             }
@@ -545,7 +561,22 @@ async function request_confirm_verify_basic_doi(node_url_alice,rpcAuthAlice, dap
     }else{
         let nameId=null;
         try{
-            confirmLink(confirmedLink);
+            if(counter>=50){
+                throw lastError;
+            }
+            testLogging('step 4: confirming link',confirmedLink);
+            //Checking the redirect-parameters after confirming link
+            let redirLink = confirmLink(confirmedLink);
+            let redirUrl = new URL(redirLink.location);
+            if(optionalData){
+                if(optionalData.redirectParam){
+                    testLogging("Checking for redirect params:",optionalData.redirectParam)
+                    Object.keys(optionalData.redirectParam).forEach(function(key){
+                        chai.assert.isTrue(redirUrl.searchParams.has(key));
+                        chai.assert.equal(redirUrl.searchParams.get(key),""+optionalData.redirectParam[key]);
+                    });
+                }
+            }
             chai.assert.isBelow(counter,50);
             //confirmLink(confirmedLink);
             const nameId = getNameIdOfOptInFromRawTx(node_url_alice,rpcAuthAlice,resultDataOptIn.data.id,true);

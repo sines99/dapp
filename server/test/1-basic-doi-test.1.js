@@ -6,7 +6,7 @@ import {
     exportOptIns,
     requestConfirmVerifyBasicDoi, resetUsers, updateUser, deleteAllEmailsFromPop3, confirmLink
 } from "./test-api/test-api-on-dapp";
-import {logBlockchain} from "../../imports/startup/server/log-configuration";
+import {logBlockchain, testLogging} from "../../imports/startup/server/log-configuration";
 import {deleteOptInsFromAliceAndBob} from "./test-api/test-api-on-node";
 
 const node_url_alice = 'http://172.20.0.6:18332/';
@@ -33,7 +33,11 @@ if(Meteor.isAppTest) {
             deleteOptInsFromAliceAndBob();
             deleteAllEmailsFromPop3("mail", 110, recipient_pop3username, recipient_pop3password, true);
             const adLog = login(dappUrlAlice, dAppLogin, false);
-            updateUser(dappUrlAlice, adLog, adLog.userId, {"subject":"Testsubject"});
+            updateUser(dappUrlAlice, adLog, adLog.userId, {},false);
+        });
+        afterEach(function(){
+            const adLog = login(dappUrlAlice, dAppLogin, false);
+            updateUser(dappUrlAlice, adLog, adLog.userId, {},false);
         });
 
         it('should test if basic Doichain workflow is working with optional data', function (done) {
@@ -81,25 +85,29 @@ if(Meteor.isAppTest) {
             const logUserB = login(dappUrlAlice, aliceBLogin, true);
 
             //requestConfirmVerifyBasicDoi checks if the "log" value (if it is a String) is in the mail-text
-            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, logUserA, dappUrlBob, recipient_mail, sender_mail_alice_a, {'city': 'Ekaterinburg'}, "bob@ci-doichain.org", "bob", "kostenlose Anmeldung");
-            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, logUserB, dappUrlBob, recipient_mail, sender_mail_alice_b, {'city': 'Simbach'}, "bob@ci-doichain.org", "bob", "free registration");
+            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, logUserA, dappUrlBob, recipient_mail, sender_mail_alice_a, {'city': 'Ekaterinburg'}, "bob@ci-doichain.org", "bob","kostenlose Anmeldung");
+            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, logUserB, dappUrlBob, recipient_mail, sender_mail_alice_b, {'city': 'Simbach'}, "bob@ci-doichain.org", "bob","free registration");
 
             done();
         });
 
         it('should test if users can export OptIns ', function (done) {
+            resetUsers();
             const recipient_mail = "bob@ci-doichain.org"; //
-            const sender_mail_alice_a = "alice-export@ci-doichain.org";
+            const sender_mail_alice_a = "alice-export_a@ci-doichain.org";
+            const sender_mail_alice_b = "alice-export_b@ci-doichain.org";
             const logAdmin = login(dappUrlAlice, dAppLogin, true);
-            const logUserA = login(dappUrlAlice, aliceALogin, true);
-            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, logUserA, dappUrlBob, recipient_mail, sender_mail_alice_a, {'city': 'München'}, "bob@ci-doichain.org", "bob", true);
+            createUser(dappUrlAlice,logAdmin,"basicuser",templateUrlA,true);
+            const logBasic = login(dappUrlAlice, {"username":"basicuser","password":"password"}, true);
+            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, logBasic, dappUrlBob, recipient_mail, sender_mail_alice_a, {'city': 'München'}, "bob@ci-doichain.org", "bob", true);
+            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, logAdmin, dappUrlBob, recipient_mail, sender_mail_alice_b, {'city': 'München'}, "bob@ci-doichain.org", "bob", true);
             const exportedOptIns = exportOptIns(dappUrlAlice, logAdmin, true);
             chai.expect(exportedOptIns).to.not.be.undefined;
             chai.expect(exportedOptIns[0]).to.not.be.undefined;
             chai.expect(exportedOptIns[0].RecipientEmail.email).to.be.equal(recipient_mail);
-            const exportedOptInsA = exportOptIns(dappUrlAlice, logUserA, true);
+            const exportedOptInsA = exportOptIns(dappUrlAlice, logBasic, true);
             exportedOptInsA.forEach(element => {
-                chai.expect(element.ownerId).to.be.equal(logUserA.userId);
+                chai.expect(element.ownerId).to.be.equal(logBasic.userId);
             });
             //chai.expect(findOptIn(resultDataOptIn._id)).to.not.be.undefined;
             done();
@@ -124,7 +132,7 @@ if(Meteor.isAppTest) {
         });
 
         it('should test if coDoi works', function () {
-            const coDoiList = ["alice1@doichain-ci.com", "alice2@doichain-ci.com", "alice3@doichain-ci.com"];
+            const coDoiList = ["aliceCo1@doichain-ci.com", "aliceCo2@doichain-ci.com", "aliceCo3@doichain-ci.com"];
             const recipient_mail = "bob@ci-doichain.org";
             const sender_mail = coDoiList;
             let logAdmin = login(dappUrlAlice, dAppLogin, true);
@@ -136,17 +144,19 @@ if(Meteor.isAppTest) {
             const sender_mail = "alice-update@ci-doichain.org";
             const adLog = login(dappUrlAlice, dAppLogin, false);
             updateUser(dappUrlAlice, adLog, adLog.userId, {"subject": "updateTest", "templateURL": templateUrlB});
-            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, adLog, dappUrlBob, recipient_mail, sender_mail, {'city': 'Ekaterinburg'}, "bob@ci-doichain.org", "bob", true);
+            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, adLog, dappUrlBob, recipient_mail, sender_mail, {'city': 'Ekaterinburg'}, "bob@ci-doichain.org", "bob",true, "updateTest");
             done();
         });
 
         it('should use URL params', function (done) {
             const recipient_mail = "bob@ci-doichain.org"; //please use this as standard to not confuse people!
-            const sender_mail = "alice-param@ci-doichain.org";
+            const sender_mail_a = "alice-param-a@ci-doichain.org";
+            const sender_mail_b = "alice-param-b@ci-doichain.org";
             const adLog = login(dappUrlAlice, dAppLogin, false);
-            updateUser(dappUrlAlice, adLog, adLog.userId, {"subject": "paramTest", "redirect": "https://www.doichain.org", "templateURL": templateUrlA},true);
-            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, adLog, dappUrlBob, recipient_mail, sender_mail, {'redirectParam': {'p':1},'templateParam':{'token':'abcdfgh'}}, "bob@ci-doichain.org", "bob", true);
-            updateUser(dappUrlAlice, adLog, adLog.userId,{"subject":"paramTest"},false);
+            updateUser(dappUrlAlice, adLog, adLog.userId, {"subject": "paramTest", "redirect": "https://www.doichain.org", "templateURL": dappUrlAlice+"/api/v1/template"},true);
+            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, adLog, dappUrlBob, recipient_mail, sender_mail_a, {'redirectParam': {'p':1},'templateParam':{'lang':'en'}}, "bob@ci-doichain.org", "bob",true,"your free registation");
+            requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, adLog, dappUrlBob, recipient_mail, sender_mail_b, {'redirectParam': {'p':1},'templateParam':{'lang':'de'}}, "bob@ci-doichain.org", "bob",true,"Ihre kostenlose Anmeldung");
+            updateUser(dappUrlAlice, adLog, adLog.userId, {},true);
             done();
         });
 
@@ -157,7 +167,7 @@ if(Meteor.isAppTest) {
                 const dataLoginAlice = login(dappUrlAlice, dAppLogin, false); //log into dApp
                 updateUser(dappUrlAlice, dataLoginAlice, dataLoginAlice.userId,{"subject":"multiclickTest"},true);
                 let returnedData = requestConfirmVerifyBasicDoi(node_url_alice, rpcAuthAlice, dappUrlAlice, dataLoginAlice, dappUrlBob, recipient_mail, sender_mail, {'city': 'Ekaterinburg'}, "bob@ci-doichain.org", "bob", true);    
-                chai.assert.equal(true,confirmLink(returnedData.confirmLink));
+                chai.assert.notEqual(null,confirmLink(returnedData.confirmLink).location);
             }
 
         });

@@ -136,7 +136,9 @@ const getDoiMailData = (data) => {
       returnData["subject"] = mailTemplate["subject"] || defaultReturnData["subject"];
       returnData["returnPath"] = mailTemplate["returnPath"] || defaultReturnData["returnPath"];
       returnData["content"] = tmpTemplate ? (getHttpGET(tmpTemplate).content || defaultReturnData["content"]) : defaultReturnData["content"];
-      
+      logSend("Redirect Url set to:",returnData["redirect"]);
+      logSend("Template Url set to:",(tmpTemplate ? tmpTemplate : "Default"));
+
     }
     catch(error) {
       returnData=defaultReturnData;
